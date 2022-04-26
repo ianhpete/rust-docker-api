@@ -358,7 +358,7 @@ impl Docker {
 
         let body = self.request(
             Method::GET,
-            &format!("/containers/{}/stats", container.Id),
+            &format!("/containers/{}/stats?stream=false", container.Id),
             "".to_string(),
         );
 
