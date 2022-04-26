@@ -2,7 +2,7 @@
 edition = "2021"
 name = "rs-docker-api"
 description = "Docker Remote API in Rust"
-version = "0.0.62"
+version = "0.0.63"
 authors = ["Jan Peters"]
 license = "Apache-2.0"
 homepage = "https://github.com/ianhpete/rust-docker-api"
