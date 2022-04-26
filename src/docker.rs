@@ -252,7 +252,7 @@ impl Docker {
     }
 
     pub fn get_containers(&mut self, all: bool) -> std::io::Result<Vec<Container>> {
-
+        //let a = all.to_string();
         let body = self.request(
             Method::GET,
             &format!("/containers/json?all={}&size=1", all),

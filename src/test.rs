@@ -1,5 +1,6 @@
 #[cfg(test)]
 use crate::container::{Container, ContainerInfo};
+use crate::Docker;
 #[cfg(test)]
 use crate::filesystem::FilesystemChange;
 #[cfg(test)]
@@ -30,15 +31,24 @@ fn get_networks() {
 
 #[test]
 #[cfg(test)]
+#[ignore]
 fn get_containers() {
-    let response = get_containers_response();
-    let _: Vec<Container> = match serde_json::from_str(&response) {
-        Ok(body) => body,
-        Err(_) => {
-            assert!(false);
-            return;
-        }
+    let mut docker = match Docker::connect("unix:///var/run/docker.sock"){
+        Ok(docker) => docker,
+        Err(err) => {panic!("{}",err);}
     };
+
+    let containers = match docker.get_containers(true) {
+        Ok(containers) => containers,
+        Err(e) => { panic!("{}", e); }
+    };
+
+    for container in containers {
+        if container.Id.contains("1f"){
+        assert_eq!(true,true);
+        }
+    }
+
 }
 
 #[test]
