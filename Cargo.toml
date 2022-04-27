@@ -1,12 +1,12 @@
 [package]
 edition = "2018"
-name = "rs-docker"
+name = "rs-docker-api"
 description = "Docker Remote API in Rust"
-version = "0.0.58"
-authors = ["Thiago Areias <kblo.thiago@gmail.com>"]
+version = "0.0.64"
+authors = ["Jan Peters <ianhpete@gmail.com>"]
 license = "Apache-2.0"
-homepage = "https://gitlab.com/kblobr/rust-docker"
-repository = "https://gitlab.com/kblobr/rust-docker.git"
+homepage = "https://github.com/ianhpete/rust-docker-api"
+repository = "https://github.com/ianhpete/rust-docker-api"
 documentation = "https://ghmlee.github.io/rust-docker/doc/docker"
 readme = "README.md"
 keywords = ["docker"]

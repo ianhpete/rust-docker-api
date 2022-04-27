@@ -369,7 +369,7 @@ impl Docker {
 
         let body = self.request(
             Method::GET,
-            &format!("/containers/{}/stats", container.Id),
+            &format!("/containers/{}/stats?stream=false", container.Id),
             "".to_string(),
         );
 
@@ -381,6 +381,24 @@ impl Docker {
             }
         };
         return Ok(stats);
+    }
+
+    pub fn get_stats_string(&mut self, container: &Container) -> String{
+        if container.Status.contains("Up") == false {
+            let err = std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "The container is already stopped.",
+            );
+            println!("{}", err);
+        }
+
+        let body = self.request(
+            Method::GET,
+            &format!("/containers/{}/stats?stream=false", container.Id),
+            "".to_string(),
+        );
+
+        return body;
     }
 
     //
