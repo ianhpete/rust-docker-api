@@ -10,6 +10,7 @@ repository = "https://github.com/ianhpete/rust-docker-api"
 documentation = "https://ghmlee.github.io/rust-docker/doc/docker"
 readme = "README.md"
 keywords = ["docker"]
+exclude = [".idea"]
 
 [dependencies]
 serde = "1.0.100"
