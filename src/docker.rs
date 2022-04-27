@@ -78,7 +78,7 @@ impl Docker {
         return Ok(docker);
     }
 
-    fn request_file(&self, method: Method, url: &str, file: Vec<u8>, content_type: &str) -> String {
+   /* fn request_file(&self, method: Method, url: &str, file: Vec<u8>, content_type: &str) -> String {
         let req = Request::builder()
             .uri(match self.protocol {
                 Protocol::UNIX => hyperlocal::Uri::new(self.path.clone(), url).into(),
@@ -107,7 +107,7 @@ impl Docker {
                 .map(|body| String::from_utf8(body.expect("Body should not have an error").to_vec()).unwrap()),
             )
         }
-    }
+    }*/
 
     fn request(&self, method: Method, url: &str, body: String) -> String {
         self.request_file(method, url, body.into_bytes(), "application/json")
