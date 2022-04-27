@@ -77,7 +77,7 @@ impl Docker {
         };
         return Ok(docker);
     }
-
+    //TODO Fix this
    /* fn request_file(&self, method: Method, url: &str, file: Vec<u8>, content_type: &str) -> String {
         let req = Request::builder()
             .uri(match self.protocol {
@@ -109,9 +109,10 @@ impl Docker {
         }
     }*/
 
-    fn request(&self, method: Method, url: &str, body: String) -> String {
+    //TODO fix this
+    /*fn request(&self, method: Method, url: &str, body: String) -> String {
         self.request_file(method, url, body.into_bytes(), "application/json")
-    }
+    }*/
 
     //
     // Networks
@@ -415,6 +416,8 @@ impl Docker {
         }
     }
 
+    //TODO fix this
+    /*
     pub fn build_image(&mut self, data: Vec<u8>, t: String) -> std::io::Result<String> {
         let body = self.request_file(
             Method::POST,
@@ -429,7 +432,7 @@ impl Docker {
             )),
             Err(_e) => Ok("".to_string()),
         }
-    }
+    } */
 
     pub fn create_image(
         &mut self,
