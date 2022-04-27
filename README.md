@@ -8,8 +8,6 @@ Issues and PRs welcome.
 
 # Docker
 
-[![Build Status](https://gitlab.com/kblobr/rust-docker/badges/master/build.svg)](https://gitlab.com/kblobr/rust-docker)
-
 This is a Docker Remote API binding in Rust. Documentation is available [here](https://docs.rs/rs-docker).
 
 ## Quick start

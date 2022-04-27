@@ -1,5 +1,4 @@
 use std;
-use std::error::Error;
 
 use crate::container::{Container, ContainerCreate, ContainerInfo};
 use crate::filesystem::FilesystemChange;
@@ -10,7 +9,8 @@ use crate::stats::Stats;
 use crate::system::SystemInfo;
 use crate::version::Version;
 
-use futures::{Future, Stream};
+use crate::futures::FutureExt;
+use crate::futures::TryFutureExt;
 
 use hyper::{Body, Client, Method, Request, Uri};
 
@@ -18,7 +18,7 @@ use hyper::client::HttpConnector;
 
 use hyperlocal::UnixConnector;
 
-use tokio::runtime::Runtime;
+use tokio::runtime::{Handle, Runtime};
 
 pub struct Docker {
     protocol: Protocol,
@@ -58,7 +58,7 @@ impl Docker {
 
         let hyperlocal_client = match protocol {
             Protocol::UNIX => {
-                let unix_connector = UnixConnector::new();
+                let unix_connector = UnixConnector;
                 Some(Client::builder().build(unix_connector))
             }
             _ => None,
@@ -89,39 +89,28 @@ impl Docker {
             .method(method)
             .body(Body::from(file))
             .expect("failed to build request");
-        let mut rt = Runtime::new().unwrap();
-        rt.block_on(
-            match self.protocol {
-                Protocol::UNIX => self.hyperlocal_client.as_ref().unwrap().request(req),
-                Protocol::TCP => self.hyper_client.as_ref().unwrap().request(req),
-            }
-            .and_then(|res| res.into_body().concat2())
-            .map(|body| String::from_utf8(body.to_vec()).unwrap()),
-        )
-        .unwrap()
+        match Handle::try_current() {
+            Ok(handle) => handle.block_on(
+                match self.protocol {
+                    Protocol::UNIX => self.hyperlocal_client.as_ref().unwrap().request(req),
+                    Protocol::TCP => self.hyper_client.as_ref().unwrap().request(req),
+                }
+                .and_then(|res| hyper::body::to_bytes(res.into_body()))
+                .map(|body| String::from_utf8(body.expect("Body should not have an error").to_vec()).unwrap())
+                ),
+            Err(_) => Runtime::new().unwrap().block_on(
+                match self.protocol {
+                    Protocol::UNIX => self.hyperlocal_client.as_ref().unwrap().request(req),
+                    Protocol::TCP => self.hyper_client.as_ref().unwrap().request(req),
+                }
+                .and_then(|res| hyper::body::to_bytes(res.into_body()))
+                .map(|body| String::from_utf8(body.expect("Body should not have an error").to_vec()).unwrap()),
+            )
+        }
     }
 
     fn request(&self, method: Method, url: &str, body: String) -> String {
-        let req = Request::builder()
-            .uri(match self.protocol {
-                Protocol::UNIX => hyperlocal::Uri::new(self.path.clone(), url).into(),
-                _ => format!("{}{}", self.path, url).parse::<Uri>().unwrap(),
-            })
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .method(method)
-            .body(Body::from(body))
-            .expect("failed to build request");
-        let mut rt = Runtime::new().unwrap();
-        rt.block_on(
-            match self.protocol {
-                Protocol::UNIX => self.hyperlocal_client.as_ref().unwrap().request(req),
-                Protocol::TCP => self.hyper_client.as_ref().unwrap().request(req),
-            }
-            .and_then(|res| res.into_body().concat2())
-            .map(|body| String::from_utf8(body.to_vec()).unwrap()),
-        )
-        .unwrap()
+        self.request_file(method, url, body.into_bytes(), "application/json")
     }
 
     //
@@ -135,7 +124,7 @@ impl Docker {
             Ok(networks) => Ok(networks),
             Err(e) => Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                e.description(),
+                e.to_string(),
             )),
         }
     }
@@ -152,7 +141,7 @@ impl Docker {
             Err(e) => {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidInput,
-                    e.description(),
+                    e.to_string(),
                 ));
             }
         };
@@ -249,7 +238,7 @@ impl Docker {
             Err(e) => {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidInput,
-                    e.description(),
+                    e.to_string(),
                 ));
             }
         };
@@ -263,21 +252,17 @@ impl Docker {
     }
 
     pub fn get_containers(&mut self, all: bool) -> std::io::Result<Vec<Container>> {
-        let a = match all {
-            true => "1",
-            false => "0",
-        };
-
+        //let a = all.to_string();
         let body = self.request(
             Method::GET,
-            &format!("/containers/json?all={}&size=1", a),
+            &format!("/containers/json?all={}&size=1", all),
             "".to_string(),
         );
 
         let containers: Vec<Container> = match serde_json::from_str(&body) {
             Ok(containers) => containers,
             Err(e) => {
-                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.description());
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string());
                 return Err(err);
             }
         };
@@ -295,7 +280,7 @@ impl Docker {
         let top: Top = match serde_json::from_str(&body) {
             Ok(top) => top,
             Err(e) => {
-                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.description());
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string());
                 return Err(err);
             }
         };
@@ -376,7 +361,7 @@ impl Docker {
         let stats: Stats = match serde_json::from_str(&body) {
             Ok(stats) => stats,
             Err(e) => {
-                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.description());
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string());
                 return Err(err);
             }
         };
@@ -425,7 +410,7 @@ impl Docker {
             }
             Err(e) => Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                e.description(),
+                e.to_string(),
             )),
         }
     }
@@ -464,7 +449,7 @@ impl Docker {
         let statuses: Vec<ImageStatus> = match serde_json::from_str(&fixed) {
             Ok(statuses) => statuses,
             Err(e) => {
-                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.description());
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string());
                 return Err(err);
             }
         };
@@ -485,7 +470,7 @@ impl Docker {
         let images: Vec<Image> = match serde_json::from_str(&body) {
             Ok(images) => images,
             Err(e) => {
-                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.description());
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string());
                 return Err(err);
             }
         };
@@ -498,7 +483,7 @@ impl Docker {
         let info: SystemInfo = match serde_json::from_str(&body) {
             Ok(info) => info,
             Err(e) => {
-                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.description());
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string());
                 return Err(err);
             }
         };
@@ -515,7 +500,7 @@ impl Docker {
         let container_info: ContainerInfo = match serde_json::from_str(&body) {
             Ok(body) => body,
             Err(e) => {
-                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.description());
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string());
                 return Err(err);
             }
         };
@@ -535,7 +520,7 @@ impl Docker {
         let filesystem_changes: Vec<FilesystemChange> = match serde_json::from_str(&body) {
             Ok(body) => body,
             Err(e) => {
-                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.description());
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string());
                 return Err(err);
             }
         };
@@ -564,7 +549,7 @@ impl Docker {
         let version: Version = match serde_json::from_str(&body) {
             Ok(r_body) => r_body,
             Err(e) => {
-                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.description());
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string());
                 return Err(err);
             }
         };
